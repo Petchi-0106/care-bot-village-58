@@ -14,7 +14,269 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      appointments: {
+        Row: {
+          appointment_date: string
+          created_at: string
+          doctor_name: string
+          hospital_name: string
+          id: string
+          notes: string | null
+          purpose: string | null
+          reminder_sent: boolean | null
+          status: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          appointment_date: string
+          created_at?: string
+          doctor_name: string
+          hospital_name: string
+          id?: string
+          notes?: string | null
+          purpose?: string | null
+          reminder_sent?: boolean | null
+          status?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          appointment_date?: string
+          created_at?: string
+          doctor_name?: string
+          hospital_name?: string
+          id?: string
+          notes?: string | null
+          purpose?: string | null
+          reminder_sent?: boolean | null
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      chat_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          message_type: string | null
+          role: string
+          session_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          message_type?: string | null
+          role: string
+          session_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          message_type?: string | null
+          role?: string
+          session_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_messages_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "chat_sessions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_sessions: {
+        Row: {
+          created_at: string
+          id: string
+          language: string | null
+          session_type: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          language?: string | null
+          session_type?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          language?: string | null
+          session_type?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      health_alerts: {
+        Row: {
+          alert_type: string
+          content: string
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          location_specific: string[] | null
+          published_at: string
+          severity: string | null
+          title: string
+        }
+        Insert: {
+          alert_type: string
+          content: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_specific?: string[] | null
+          published_at?: string
+          severity?: string | null
+          title: string
+        }
+        Update: {
+          alert_type?: string
+          content?: string
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          location_specific?: string[] | null
+          published_at?: string
+          severity?: string | null
+          title?: string
+        }
+        Relationships: []
+      }
+      health_records: {
+        Row: {
+          allergies: string[] | null
+          condition_name: string
+          created_at: string
+          current_medications: string[] | null
+          diagnosis_date: string | null
+          id: string
+          notes: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          allergies?: string[] | null
+          condition_name: string
+          created_at?: string
+          current_medications?: string[] | null
+          diagnosis_date?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          allergies?: string[] | null
+          condition_name?: string
+          created_at?: string
+          current_medications?: string[] | null
+          diagnosis_date?: string | null
+          id?: string
+          notes?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          blood_group: string | null
+          created_at: string
+          date_of_birth: string | null
+          emergency_contact_name: string | null
+          emergency_contact_phone: string | null
+          full_name: string | null
+          gender: string | null
+          id: string
+          phone_number: string | null
+          preferred_language: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          blood_group?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          full_name?: string | null
+          gender?: string | null
+          id?: string
+          phone_number?: string | null
+          preferred_language?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          blood_group?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          emergency_contact_name?: string | null
+          emergency_contact_phone?: string | null
+          full_name?: string | null
+          gender?: string | null
+          id?: string
+          phone_number?: string | null
+          preferred_language?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      vaccination_schedules: {
+        Row: {
+          administered_date: string | null
+          created_at: string
+          id: string
+          location: string | null
+          notes: string | null
+          reminder_sent: boolean | null
+          scheduled_date: string
+          status: string | null
+          updated_at: string
+          user_id: string
+          vaccine_name: string
+        }
+        Insert: {
+          administered_date?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          reminder_sent?: boolean | null
+          scheduled_date: string
+          status?: string | null
+          updated_at?: string
+          user_id: string
+          vaccine_name: string
+        }
+        Update: {
+          administered_date?: string | null
+          created_at?: string
+          id?: string
+          location?: string | null
+          notes?: string | null
+          reminder_sent?: boolean | null
+          scheduled_date?: string
+          status?: string | null
+          updated_at?: string
+          user_id?: string
+          vaccine_name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
