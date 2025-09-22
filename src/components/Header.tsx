@@ -1,9 +1,25 @@
 import { useState } from "react";
-import { Menu, X, Heart, MessageCircle, User, Bell } from "lucide-react";
+import { Menu, X, Heart, MessageCircle, User, Bell, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 const Header = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   const navigation = [
     { name: "Features", href: "#features" },
@@ -46,10 +62,31 @@ const Header = () => {
             <Button variant="ghost" size="sm">
               <Bell className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="sm">
-              <User className="h-4 w-4" />
-            </Button>
-            <Button className="bg-secondary hover:bg-secondary-light">
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <User className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => window.location.href = '#dashboard'}>
+                    <User className="w-4 h-4 mr-2" />
+                    Dashboard
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleSignOut}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="ghost" size="sm" onClick={() => navigate('/auth')}>
+                <User className="h-4 w-4" />
+              </Button>
+            )}
+            <Button className="bg-secondary hover:bg-secondary-light" onClick={() => window.location.href = '#chatbot'}>
               <MessageCircle className="mr-2 h-4 w-4" />
               Chat Now
             </Button>
@@ -79,11 +116,24 @@ const Header = () => {
                 </a>
               ))}
               <div className="flex flex-col gap-2 pt-3 border-t border-border">
-                <Button variant="outline" className="justify-start">
-                  <User className="mr-2 h-4 w-4" />
-                  Login
-                </Button>
-                <Button className="justify-start bg-secondary hover:bg-secondary-light">
+                {user ? (
+                  <>
+                    <Button variant="outline" className="justify-start" onClick={() => window.location.href = '#dashboard'}>
+                      <User className="mr-2 h-4 w-4" />
+                      Dashboard
+                    </Button>
+                    <Button variant="outline" className="justify-start" onClick={handleSignOut}>
+                      <LogOut className="mr-2 h-4 w-4" />
+                      Sign Out
+                    </Button>
+                  </>
+                ) : (
+                  <Button variant="outline" className="justify-start" onClick={() => navigate('/auth')}>
+                    <User className="mr-2 h-4 w-4" />
+                    Login
+                  </Button>
+                )}
+                <Button className="justify-start bg-secondary hover:bg-secondary-light" onClick={() => window.location.href = '#chatbot'}>
                   <MessageCircle className="mr-2 h-4 w-4" />
                   Chat Now
                 </Button>

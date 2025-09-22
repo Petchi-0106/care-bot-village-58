@@ -1,8 +1,12 @@
-import { useState } from "react";
-import { Send, Bot, User, MessageCircle, Mic, Image as ImageIcon } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Send, Bot, User, MessageCircle, Mic, Image as ImageIcon, LogIn } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/components/ui/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface Message {
   id: number;
@@ -32,9 +36,23 @@ const ChatbotDemo = () => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!inputText.trim()) return;
+    
+    if (!user) {
+      toast({
+        title: "Sign in required",
+        description: "Please sign in to chat with the AI health assistant.",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
 
     const userMessage: Message = {
       id: messages.length + 1,
@@ -44,33 +62,50 @@ const ChatbotDemo = () => {
     };
 
     setMessages([...messages, userMessage]);
+    const currentMessage = inputText;
     setInputText("");
     setIsTyping(true);
 
-    // Simulate bot response
-    setTimeout(() => {
-      let botResponse = "";
-      
-      if (inputText.toLowerCase().includes("vaccination")) {
-        botResponse = "I can help you with vaccination information! Here's your upcoming schedule:\n\n• COVID-19 Booster: Due in 2 weeks\n• Flu Shot: Annual (Due in 3 months)\n• Hepatitis B: Complete ✓\n\nWould you like me to set reminders for these?";
-      } else if (inputText.toLowerCase().includes("emergency")) {
-        botResponse = "Here are the emergency contacts for your area:\n\n🚨 Emergency Services: 108\n🏥 Nearest Hospital: District Hospital (15.7 km)\n👩‍⚕️ Doctor on Call: Dr. Priya Sharma\n\nWould you like me to help you contact any of these?";
-      } else if (inputText.toLowerCase().includes("symptoms") || inputText.toLowerCase().includes("fever")) {
-        botResponse = "I understand you're asking about symptoms. Please note I can provide general information only.\n\nFor fever:\n• Monitor temperature regularly\n• Stay hydrated\n• Rest adequately\n• Seek medical help if fever >101°F or persists >3 days\n\n⚠️ For serious symptoms, please contact emergency services immediately.";
-      } else {
-        botResponse = "Thank you for your question! I'm here to help with health information, vaccination schedules, emergency contacts, and general health guidance. Could you please specify what you'd like to know more about?";
-      }
+    try {
+      const { data, error } = await supabase.functions.invoke('health-chatbot', {
+        body: {
+          message: currentMessage,
+          sessionId,
+          userId: user.id,
+          language: 'english'
+        }
+      });
+
+      if (error) throw error;
 
       const botMessage: Message = {
         id: messages.length + 2,
-        text: botResponse,
+        text: data.message,
         sender: 'bot',
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       };
 
       setMessages(prev => [...prev, botMessage]);
+      setSessionId(data.sessionId);
+    } catch (error: any) {
+      console.error('Chatbot error:', error);
+      toast({
+        title: "Error",
+        description: "Failed to get response from AI assistant. Please try again.",
+        variant: "destructive",
+      });
+      
+      // Fallback response
+      const errorMessage: Message = {
+        id: messages.length + 2,
+        text: "I'm sorry, I'm having trouble connecting right now. Please try again in a moment or contact our support team for assistance.",
+        sender: 'bot',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsTyping(false);
-    }, 1500);
+    }
   };
 
   const handleQuickReply = (reply: string) => {
@@ -176,30 +211,40 @@ const ChatbotDemo = () => {
 
               {/* Input area */}
               <div className="p-6 border-t bg-white">
-                <div className="flex items-center gap-3">
-                  <div className="flex-1 flex items-center gap-2 bg-muted rounded-lg px-3 py-2">
-                    <Input
-                      value={inputText}
-                      onChange={(e) => setInputText(e.target.value)}
-                      onKeyPress={handleKeyPress}
-                      placeholder="Type your health question here..."
-                      className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
-                    />
-                    <Button variant="ghost" size="sm" className="p-1">
-                      <Mic className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                    <Button variant="ghost" size="sm" className="p-1">
-                      <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                {user ? (
+                  <div className="flex items-center gap-3">
+                    <div className="flex-1 flex items-center gap-2 bg-muted rounded-lg px-3 py-2">
+                      <Input
+                        value={inputText}
+                        onChange={(e) => setInputText(e.target.value)}
+                        onKeyPress={handleKeyPress}
+                        placeholder="Type your health question here..."
+                        className="border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0"
+                      />
+                      <Button variant="ghost" size="sm" className="p-1">
+                        <Mic className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                      <Button variant="ghost" size="sm" className="p-1">
+                        <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </div>
+                    <Button 
+                      onClick={handleSendMessage}
+                      disabled={!inputText.trim() || isTyping}
+                      className="bg-primary hover:bg-primary-dark"
+                    >
+                      <Send className="h-4 w-4" />
                     </Button>
                   </div>
-                  <Button 
-                    onClick={handleSendMessage}
-                    disabled={!inputText.trim()}
-                    className="bg-primary hover:bg-primary-dark"
-                  >
-                    <Send className="h-4 w-4" />
-                  </Button>
-                </div>
+                ) : (
+                  <div className="text-center space-y-4">
+                    <p className="text-muted-foreground">Sign in to chat with our AI health assistant</p>
+                    <Button onClick={() => navigate('/auth')} className="bg-primary hover:bg-primary-dark">
+                      <LogIn className="mr-2 h-4 w-4" />
+                      Sign In to Chat
+                    </Button>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>

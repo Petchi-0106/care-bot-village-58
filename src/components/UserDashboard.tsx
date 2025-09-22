@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   User, 
   Calendar, 
@@ -10,13 +10,18 @@ import {
   Pill,
   Clock,
   CheckCircle,
-  XCircle
+  XCircle,
+  LogIn
 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import { useAuth } from "@/hooks/useAuth";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/components/ui/use-toast";
 
 const healthHistory = [
   {
@@ -103,6 +108,59 @@ const healthMetrics = [
 
 const UserDashboard = () => {
   const [activeTab, setActiveTab] = useState("history");
+  const [healthRecords, setHealthRecords] = useState<any[]>([]);
+  const [vaccinations, setVaccinations] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (user) {
+      fetchUserData();
+    } else {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const fetchUserData = async () => {
+    try {
+      // Fetch health records
+      const { data: records } = await supabase
+        .from('health_records')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('created_at', { ascending: false });
+
+      // Fetch vaccination schedules
+      const { data: vaccines } = await supabase
+        .from('vaccination_schedules')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('scheduled_date', { ascending: true });
+
+      // Fetch appointments
+      const { data: apps } = await supabase
+        .from('appointments')
+        .select('*')
+        .eq('user_id', user!.id)
+        .order('appointment_date', { ascending: true });
+
+      setHealthRecords(records || []);
+      setVaccinations(vaccines || []);
+      setAppointments(apps || []);
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+      toast({
+        title: "Error",
+        description: "Failed to load your health data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -129,6 +187,37 @@ const UserDashboard = () => {
       default: return 'text-health-emergency';
     }
   };
+
+  if (loading) {
+    return (
+      <section className="py-20 bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading your health dashboard...</p>
+        </div>
+      </section>
+    );
+  }
+
+  if (!user) {
+    return (
+      <section className="py-20 bg-background">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="space-y-6">
+            <User className="h-16 w-16 text-primary mx-auto" />
+            <h2 className="text-3xl font-bold text-foreground">Your Health Dashboard</h2>
+            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+              Sign in to access your personalized health records, vaccination schedules, and reminders.
+            </p>
+            <Button onClick={() => navigate('/auth')} size="lg" className="bg-primary hover:bg-primary-dark">
+              <LogIn className="mr-2 h-4 w-4" />
+              Sign In to Access Dashboard
+            </Button>
+          </div>
+        </div>
+      </section>
+    );
+  }
 
   return (
     <section className="py-20 bg-background">
@@ -192,34 +281,49 @@ const UserDashboard = () => {
           {/* Health History Tab */}
           <TabsContent value="history" className="space-y-6">
             <div className="grid gap-4">
-              {healthHistory.map((record) => (
-                <Card key={record.id} className="border-0 shadow-card">
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {record.type === 'Vaccination' && <Pill className="h-5 w-5 text-secondary" />}
-                        {record.type === 'Consultation' && <Heart className="h-5 w-5 text-primary" />}
-                        {record.type === 'Prescription' && <FileText className="h-5 w-5 text-accent" />}
-                        <div>
-                          <CardTitle className="text-lg">{record.description}</CardTitle>
-                          <CardDescription>{record.provider}</CardDescription>
+              {healthRecords.length > 0 ? (
+                healthRecords.map((record) => (
+                  <Card key={record.id} className="border-0 shadow-card">
+                    <CardHeader>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Heart className="h-5 w-5 text-primary" />
+                          <div>
+                            <CardTitle className="text-lg">{record.condition_name}</CardTitle>
+                            <CardDescription>
+                              {record.diagnosis_date ? `Diagnosed: ${new Date(record.diagnosis_date).toLocaleDateString()}` : 'No date specified'}
+                            </CardDescription>
+                            {record.current_medications && record.current_medications.length > 0 && (
+                              <CardDescription className="mt-1">
+                                Medications: {record.current_medications.join(', ')}
+                              </CardDescription>
+                            )}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm text-muted-foreground">
+                            {new Date(record.created_at).toLocaleDateString()}
+                          </p>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <Badge className={getStatusColor(record.status)}>
-                          {record.status}
-                        </Badge>
-                        <p className="text-sm text-muted-foreground mt-1">{record.date}</p>
-                      </div>
-                    </div>
-                  </CardHeader>
+                    </CardHeader>
+                  </Card>
+                ))
+              ) : (
+                <Card className="border-0 shadow-card">
+                  <CardContent className="text-center py-12">
+                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Health Records</h3>
+                    <p className="text-muted-foreground mb-4">Start building your health history by adding your medical records.</p>
+                    <Button>Add Health Record</Button>
+                  </CardContent>
                 </Card>
-              ))}
+              )}
             </div>
             
             <div className="text-center">
               <Button variant="outline" className="border-primary text-primary hover:bg-primary hover:text-white">
-                View Complete History
+                Add New Record
               </Button>
             </div>
           </TabsContent>
@@ -227,35 +331,81 @@ const UserDashboard = () => {
           {/* Reminders Tab */}
           <TabsContent value="reminders" className="space-y-6">
             <div className="grid gap-4">
-              {upcomingReminders.map((reminder) => (
-                <Card key={reminder.id} className={`border-l-4 ${getPriorityColor(reminder.priority)} border-l-current`}>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {reminder.type === 'vaccination' && <Pill className="h-5 w-5 text-secondary" />}
-                        {reminder.type === 'appointment' && <Calendar className="h-5 w-5 text-primary" />}
-                        {reminder.type === 'medication' && <Clock className="h-5 w-5 text-accent" />}
-                        <div>
-                          <CardTitle className="text-lg">{reminder.title}</CardTitle>
-                          <CardDescription className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4" />
-                            {reminder.date} at {reminder.time}
-                          </CardDescription>
+              {vaccinations.length > 0 || appointments.length > 0 ? (
+                <>
+                  {vaccinations.map((vaccination) => (
+                    <Card key={vaccination.id} className="border-l-4 border-l-secondary border-l-current">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Pill className="h-5 w-5 text-secondary" />
+                            <div>
+                              <CardTitle className="text-lg">{vaccination.vaccine_name}</CardTitle>
+                              <CardDescription className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                {new Date(vaccination.scheduled_date).toLocaleDateString()}
+                              </CardDescription>
+                              <Badge className={vaccination.status === 'completed' ? 'bg-green-500' : vaccination.status === 'scheduled' ? 'bg-blue-500' : 'bg-gray-500'}>
+                                {vaccination.status}
+                              </Badge>
+                            </div>
+                          </div>
+                          {vaccination.status === 'scheduled' && (
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline">
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Mark Done
+                              </Button>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button size="sm" variant="outline">
-                          <CheckCircle className="h-4 w-4 mr-1" />
-                          Mark Done
-                        </Button>
-                        <Button size="sm" variant="ghost">
-                          <XCircle className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </CardHeader>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                  
+                  {appointments.map((appointment) => (
+                    <Card key={appointment.id} className="border-l-4 border-l-primary border-l-current">
+                      <CardHeader>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <Calendar className="h-5 w-5 text-primary" />
+                            <div>
+                              <CardTitle className="text-lg">{appointment.purpose || 'Medical Appointment'}</CardTitle>
+                              <CardDescription>
+                                {appointment.doctor_name} at {appointment.hospital_name}
+                              </CardDescription>
+                              <CardDescription className="flex items-center gap-2">
+                                <Calendar className="h-4 w-4" />
+                                {new Date(appointment.appointment_date).toLocaleString()}
+                              </CardDescription>
+                              <Badge className={appointment.status === 'completed' ? 'bg-green-500' : appointment.status === 'scheduled' ? 'bg-blue-500' : 'bg-gray-500'}>
+                                {appointment.status}
+                              </Badge>
+                            </div>
+                          </div>
+                          {appointment.status === 'scheduled' && (
+                            <div className="flex gap-2">
+                              <Button size="sm" variant="outline">
+                                <CheckCircle className="h-4 w-4 mr-1" />
+                                Mark Done
+                              </Button>
+                            </div>
+                          )}
+                        </div>
+                      </CardHeader>
+                    </Card>
+                  ))}
+                </>
+              ) : (
+                <Card className="border-0 shadow-card">
+                  <CardContent className="text-center py-12">
+                    <Bell className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-medium mb-2">No Upcoming Reminders</h3>
+                    <p className="text-muted-foreground mb-4">Set up reminders for vaccinations, appointments, and medications.</p>
+                    <Button>Create Reminder</Button>
+                  </CardContent>
                 </Card>
-              ))}
+              )}
             </div>
             
             <div className="text-center">
