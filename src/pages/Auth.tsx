@@ -14,6 +14,7 @@ const Auth = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
+  const [phoneNumber, setPhoneNumber] = useState('');
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -49,7 +50,8 @@ const Auth = () => {
           options: {
             emailRedirectTo: `${window.location.origin}/`,
             data: {
-              full_name: fullName
+              full_name: fullName,
+              phone_number: phoneNumber
             }
           }
         });
@@ -120,8 +122,8 @@ const Auth = () => {
             <CardTitle>{isSignUp ? 'Create Account' : 'Sign In'}</CardTitle>
             <CardDescription>
               {isSignUp 
-                ? 'Get started with your personal health companion' 
-                : 'Welcome back to MedAdvisor'
+                ? 'Join thousands using AI health assistance' 
+                : 'Welcome back to AI Health Assistant'
               }
             </CardDescription>
           </CardHeader>
@@ -136,6 +138,18 @@ const Auth = () => {
                     placeholder="Enter your full name"
                     value={fullName}
                     onChange={(e) => setFullName(e.target.value)}
+                    required={isSignUp}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="phoneNumber">Phone Number</Label>
+                  <Input
+                    id="phoneNumber"
+                    type="tel"
+                    placeholder="Enter your phone number"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
                     required={isSignUp}
                   />
                 </div>

@@ -1,8 +1,43 @@
 import { MessageCircle, Smartphone, Shield } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import heroImage from "@/assets/healthcare-hero.jpg";
+import { useState } from "react";
+import { Loader2 } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 const HeroSection = () => {
+  const [isWhatsAppLoading, setIsWhatsAppLoading] = useState(false);
+  const [isSMSLoading, setIsSMSLoading] = useState(false);
+  const { toast } = useToast();
+
+  const handleWhatsAppClick = () => {
+    setIsWhatsAppLoading(true);
+    // In a real implementation, this would redirect to WhatsApp with a pre-filled message
+    const whatsappNumber = "+1234567890"; // Replace with actual WhatsApp business number
+    const message = "Hi! I'd like to get health assistance through WhatsApp.";
+    const whatsappUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(message)}`;
+    
+    setTimeout(() => {
+      window.open(whatsappUrl, '_blank');
+      setIsWhatsAppLoading(false);
+      toast({
+        title: "WhatsApp Integration",
+        description: "Opening WhatsApp to start your health consultation.",
+      });
+    }, 1000);
+  };
+
+  const handleSMSClick = () => {
+    setIsSMSLoading(true);
+    // In a real implementation, this would show a form to collect phone number for SMS
+    setTimeout(() => {
+      setIsSMSLoading(false);
+      toast({
+        title: "SMS Service",
+        description: "SMS health service will be available soon. Please use web chat for now.",
+      });
+    }, 1000);
+  };
+
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background gradient */}
@@ -10,11 +45,7 @@ const HeroSection = () => {
       
       {/* Background image with overlay */}
       <div className="absolute inset-0">
-        <img 
-          src={heroImage} 
-          alt="Healthcare professionals and patients using AI chatbot technology"
-          className="w-full h-full object-cover opacity-20"
-        />
+        <div className="w-full h-full bg-gradient-to-br from-primary/10 via-secondary/10 to-accent/10" />
         <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-secondary/20" />
       </div>
 
@@ -46,7 +77,10 @@ const HeroSection = () => {
             <Button 
               size="lg" 
               className="bg-secondary hover:bg-secondary-light text-white px-8 py-4 text-lg font-semibold shadow-healthcare transition-smooth"
+              onClick={handleWhatsAppClick}
+              disabled={isWhatsAppLoading}
             >
+              {isWhatsAppLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
               <MessageCircle className="mr-2 h-5 w-5" />
               Try Chatbot (WhatsApp)
             </Button>
@@ -54,7 +88,10 @@ const HeroSection = () => {
               variant="outline" 
               size="lg"
               className="border-primary text-primary hover:bg-primary hover:text-white px-8 py-4 text-lg font-semibold transition-smooth"
+              onClick={handleSMSClick}
+              disabled={isSMSLoading}
             >
+              {isSMSLoading && <Loader2 className="mr-2 h-5 w-5 animate-spin" />}
               <Smartphone className="mr-2 h-5 w-5" />
               Try Chatbot (SMS)
             </Button>

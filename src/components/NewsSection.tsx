@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Clock, ExternalLink, TrendingUp } from "lucide-react";
+import { Clock, ExternalLink, TrendingUp, Search } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
 
 const newsArticles = [
@@ -51,6 +52,8 @@ const newsArticles = [
 const NewsSection = () => {
   const [healthAlerts, setHealthAlerts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
   useEffect(() => {
     fetchHealthAlerts();
@@ -73,6 +76,21 @@ const NewsSection = () => {
       setLoading(false);
     }
   };
+
+  const filteredAlerts = healthAlerts.filter(alert => {
+    const matchesCategory = selectedCategory === 'all' || alert.alert_type === selectedCategory;
+    const matchesSearch = alert.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         alert.content.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  const categories = [
+    { id: 'all', name: 'All Alerts' },
+    { id: 'epidemic', name: 'Epidemics' },
+    { id: 'vaccination_drive', name: 'Vaccinations' },
+    { id: 'health_advisory', name: 'Health Advisory' },
+    { id: 'emergency', name: 'Emergency' }
+  ];
 
   const getPriorityColor = (severity: string) => {
     switch (severity) {
@@ -133,39 +151,65 @@ const NewsSection = () => {
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             Stay updated with the latest health alerts, medical updates, and disease awareness information
           </p>
+          
+          {/* Search and Filter */}
+          <div className="mt-8 max-w-2xl mx-auto space-y-4">
+            <div className="relative">
+              <Input
+                placeholder="Search health news..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            </div>
+            
+            <div className="flex flex-wrap justify-center gap-2">
+              {categories.map((category) => (
+                <Button
+                  key={category.id}
+                  variant={selectedCategory === category.id ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedCategory(category.id)}
+                >
+                  {category.name}
+                </Button>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Featured article */}
-        {healthAlerts.length > 0 && (
+        {filteredAlerts.length > 0 && (
           <div className="mb-12">
             <Card className="border-0 shadow-healthcare bg-gradient-hero">
               <CardHeader>
                 <div className="flex items-center justify-between flex-wrap gap-4">
                   <div className="flex items-center gap-3">
-                    <Badge className={getAlertTypeColor(healthAlerts[0].alert_type)}>
-                      {healthAlerts[0].alert_type.replace('_', ' ')}
+                    <Badge className={getAlertTypeColor(filteredAlerts[0].alert_type)}>
+                      {filteredAlerts[0].alert_type.replace('_', ' ')}
                     </Badge>
-                    <Badge className={getPriorityColor(healthAlerts[0].severity)}>
-                      {healthAlerts[0].severity}
+                    <Badge className={getPriorityColor(filteredAlerts[0].severity)}>
+                      {filteredAlerts[0].severity}
                     </Badge>
                     <div className="flex items-center gap-2 text-sm text-muted-foreground">
                       <Clock className="h-4 w-4" />
-                      {formatTimeAgo(healthAlerts[0].published_at)}
+                      {formatTimeAgo(filteredAlerts[0].published_at)}
                     </div>
                   </div>
                   <Badge variant="outline" className="text-primary border-primary">
                     Latest Alert
                   </Badge>
                 </div>
-                <CardTitle className="text-2xl">{healthAlerts[0].title}</CardTitle>
+                <CardTitle className="text-2xl">{filteredAlerts[0].title}</CardTitle>
                 <CardDescription className="text-lg">
-                  {healthAlerts[0].content}
+                  {filteredAlerts[0].content}
                 </CardDescription>
-                {healthAlerts[0].location_specific && healthAlerts[0].location_specific.length > 0 && (
+                {filteredAlerts[0].location_specific && filteredAlerts[0].location_specific.length > 0 && (
                   <div className="flex items-center gap-2 mt-2">
                     <span className="text-sm font-medium">Locations:</span>
                     <div className="flex gap-1 flex-wrap">
-                      {healthAlerts[0].location_specific.map((location: string, index: number) => (
+                      {filteredAlerts[0].location_specific.map((location: string, index: number) => (
                         <Badge key={index} variant="outline" className="text-xs">
                           {location}
                         </Badge>
@@ -186,8 +230,8 @@ const NewsSection = () => {
 
         {/* Other articles */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-          {healthAlerts.length > 1 ? (
-            healthAlerts.slice(1).map((alert) => (
+          {filteredAlerts.length > 1 ? (
+            filteredAlerts.slice(1).map((alert) => (
               <Card key={alert.id} className="border-0 shadow-card hover:shadow-healthcare transition-smooth hover:-translate-y-1">
                 <CardHeader>
                   <div className="flex items-center justify-between mb-2">
@@ -230,13 +274,20 @@ const NewsSection = () => {
               </Card>
             ))
           ) : (
-            <Card className="border-0 shadow-card col-span-full">
-              <CardContent className="text-center py-12">
-                <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-medium mb-2">No Health Alerts</h3>
-                <p className="text-muted-foreground">Check back later for the latest health news and alerts.</p>
-              </CardContent>
-            </Card>
+            filteredAlerts.length === 0 && (
+              <Card className="border-0 shadow-card col-span-full">
+                <CardContent className="text-center py-12">
+                  <TrendingUp className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <h3 className="text-lg font-medium mb-2">No Health Alerts Found</h3>
+                  <p className="text-muted-foreground">
+                    {searchTerm || selectedCategory !== 'all' 
+                      ? 'Try adjusting your search or filter criteria.' 
+                      : 'Check back later for the latest health news and alerts.'
+                    }
+                  </p>
+                </CardContent>
+              </Card>
+            )
           )}
         </div>
 

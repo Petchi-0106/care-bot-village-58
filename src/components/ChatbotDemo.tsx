@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Send, Bot, User, MessageCircle, Mic, Image as ImageIcon, LogIn } from "lucide-react";
+import { Send, Bot, User, MessageCircle, Mic, Image as ImageIcon, LogIn, Phone, MessageSquare } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { Badge } from "@/components/ui/badge";
 
 interface Message {
   id: number;
@@ -32,14 +33,58 @@ const quickReplies = [
   "Health tips"
 ];
 
+const platformOptions = [
+  { id: 'web', name: 'Web Chat', icon: MessageCircle, description: 'Chat directly on this website' },
+  { id: 'whatsapp', name: 'WhatsApp', icon: MessageSquare, description: 'Get help via WhatsApp' },
+  { id: 'sms', name: 'SMS', icon: Phone, description: 'Receive health tips via SMS' }
+];
+
 const ChatbotDemo = () => {
   const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [inputText, setInputText] = useState("");
   const [isTyping, setIsTyping] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [selectedPlatform, setSelectedPlatform] = useState('web');
+  const [phoneNumber, setPhoneNumber] = useState('');
+  const [showPlatformSetup, setShowPlatformSetup] = useState(false);
   const { user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+
+  const setupPlatform = async (platform: string) => {
+    if (platform === 'whatsapp' || platform === 'sms') {
+      if (!phoneNumber) {
+        toast({
+          title: "Phone number required",
+          description: `Please enter your phone number to use ${platform}.`,
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Save phone number to user profile
+      if (user) {
+        const { error } = await supabase
+          .from('profiles')
+          .upsert({
+            user_id: user.id,
+            phone_number: phoneNumber
+          });
+        
+        if (error) {
+          console.error('Error saving phone number:', error);
+        }
+      }
+      
+      toast({
+        title: `${platform} setup complete!`,
+        description: `You'll receive health updates and can chat via ${platform} at ${phoneNumber}`,
+      });
+    }
+    
+    setSelectedPlatform(platform);
+    setShowPlatformSetup(false);
+  };
 
   const handleSendMessage = async () => {
     if (!inputText.trim()) return;
@@ -72,7 +117,8 @@ const ChatbotDemo = () => {
           message: currentMessage,
           sessionId,
           userId: user.id,
-          language: 'english'
+          language: 'english',
+          platform: selectedPlatform
         }
       });
 
@@ -133,6 +179,44 @@ const ChatbotDemo = () => {
           <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
             Experience our AI health assistant - try asking about vaccinations, symptoms, or emergency help
           </p>
+          
+          {/* Platform Selection */}
+          <div className="mt-8 flex flex-wrap justify-center gap-4">
+            {platformOptions.map((platform) => (
+              <Button
+                key={platform.id}
+                variant={selectedPlatform === platform.id ? "default" : "outline"}
+                onClick={() => {
+                  if (platform.id !== 'web') {
+                    setShowPlatformSetup(true);
+                  } else {
+                    setSelectedPlatform('web');
+                  }
+                }}
+                className="flex items-center gap-2"
+              >
+                <platform.icon className="h-4 w-4" />
+                {platform.name}
+              </Button>
+            ))}
+          </div>
+          
+          {showPlatformSetup && (
+            <div className="mt-6 p-4 bg-muted/50 rounded-lg max-w-md mx-auto">
+              <h3 className="font-semibold mb-2">Setup {selectedPlatform === 'whatsapp' ? 'WhatsApp' : 'SMS'}</h3>
+              <div className="flex gap-2">
+                <Input
+                  placeholder="Enter your phone number"
+                  value={phoneNumber}
+                  onChange={(e) => setPhoneNumber(e.target.value)}
+                  className="flex-1"
+                />
+                <Button onClick={() => setupPlatform(selectedPlatform)}>
+                  Setup
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="max-w-4xl mx-auto">
@@ -141,6 +225,9 @@ const ChatbotDemo = () => {
               <CardTitle className="flex items-center gap-3">
                 <Bot className="h-6 w-6" />
                 AI Health Assistant
+                <Badge variant="outline" className="ml-auto">
+                  {platformOptions.find(p => p.id === selectedPlatform)?.name}
+                </Badge>
                 <div className="ml-auto flex items-center gap-2">
                   <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
                   <span className="text-sm">Online</span>

@@ -1,6 +1,7 @@
 import { Phone, MapPin, Clock, AlertTriangle, Heart, Ambulance } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useState, useEffect } from "react";
 
 const emergencyContacts = [
   {
@@ -54,6 +55,67 @@ const nearbyServices = [
 ];
 
 const EmergencySection = () => {
+  const [userLocation, setUserLocation] = useState<{lat: number, lng: number} | null>(null);
+  const [locationError, setLocationError] = useState<string>('');
+  const [nearbyHospitals, setNearbyHospitals] = useState(nearbyServices);
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported by this browser.');
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setUserLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude
+        });
+        setLocationError('');
+        // In a real app, you would call a service to find nearby hospitals
+        findNearbyHospitals(position.coords.latitude, position.coords.longitude);
+      },
+      (error) => {
+        setLocationError('Unable to retrieve your location.');
+        console.error('Geolocation error:', error);
+      }
+    );
+  };
+
+  const findNearbyHospitals = async (lat: number, lng: number) => {
+    // In a real implementation, you would call a maps API like Google Places
+    // For demo purposes, we'll simulate finding nearby hospitals
+    const simulatedHospitals = [
+      {
+        name: "Emergency Hospital (Nearby)",
+        distance: "1.2 km",
+        address: "Based on your current location",
+        status: "Open 24/7",
+        specialty: "Emergency Care"
+      },
+      {
+        name: "City Medical Center",
+        distance: "3.5 km",
+        address: "Near your location",
+        status: "Open 24/7",
+        specialty: "Multi-specialty"
+      },
+      ...nearbyServices
+    ];
+    
+    setNearbyHospitals(simulatedHospitals);
+  };
+
+  const openDirections = (hospitalName: string, address: string) => {
+    if (userLocation) {
+      const query = encodeURIComponent(`${hospitalName}, ${address}`);
+      window.open(`https://www.google.com/maps/dir/${userLocation.lat},${userLocation.lng}/${query}`, '_blank');
+    } else {
+      const query = encodeURIComponent(`${hospitalName}, ${address}`);
+      window.open(`https://www.google.com/maps/search/${query}`, '_blank');
+    }
+  };
+
   return (
     <section className="py-20 bg-health-emergency/5">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -114,7 +176,7 @@ const EmergencySection = () => {
             </h3>
             
             <div className="space-y-4">
-              {nearbyServices.map((service, index) => (
+              {nearbyHospitals.map((service, index) => (
                 <Card key={index} className="border-l-4 border-l-primary">
                   <CardHeader className="pb-3">
                     <div className="flex items-center justify-between">
@@ -137,7 +199,11 @@ const EmergencySection = () => {
                       <span className="text-sm text-muted-foreground">
                         Specialty: {service.specialty}
                       </span>
-                      <Button variant="outline" size="sm">
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => openDirections(service.name, service.address)}
+                      >
                         Get Directions
                       </Button>
                     </div>
@@ -154,9 +220,17 @@ const EmergencySection = () => {
               <p className="text-sm text-muted-foreground">
                 Enable location access to find the nearest healthcare facilities and get accurate directions.
               </p>
-              <Button variant="outline" className="mt-3 text-health-info border-health-info">
-                Enable Location
+              <Button 
+                variant="outline" 
+                className="mt-3 text-health-info border-health-info"
+                onClick={getCurrentLocation}
+                disabled={!!userLocation}
+              >
+                {userLocation ? 'Location Enabled' : 'Enable Location'}
               </Button>
+              {locationError && (
+                <p className="text-sm text-red-500 mt-2">{locationError}</p>
+              )}
             </div>
           </div>
         </div>
