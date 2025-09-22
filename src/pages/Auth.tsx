@@ -7,6 +7,9 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { Loader2, Heart, Shield, Users } from 'lucide-react';
+import React from "react"; // not 'reacts' or undefined path
+import { useState } from "react"; // ensure it's valid
+
 
 const Auth = () => {
   const [isLoading, setIsLoading] = useState(false);
